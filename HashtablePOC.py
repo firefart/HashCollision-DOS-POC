@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 
 """
 This script was written by Christian Mehlmauer <FireFart@gmail.com>
@@ -41,7 +41,7 @@ def main():
     parser.add_argument("-s", "--save", dest="save", help="Save payload to file")
     parser.add_argument("-p", "--payload", dest="payload", help="Save payload to file")
     parser.add_argument("-o", "--output", dest="output", help="Save Server response to file. This name is only a pattern. HTML Extension will be appended. Implies -w")
-    parser.add_argument("-t", "--target", dest="target", help="Target of the attack", choices=["ASP", "PHP"])
+    parser.add_argument("-t", "--target", dest="target", help="Target of the attack", choices=["ASP", "PHP"], required=True)
     parser.add_argument("--version", action="version", version="%(prog)s 3.0")
 
     options = parser.parse_args()
