@@ -125,8 +125,8 @@ Content-Length: %s\r\n\
             sock.send(request)
 
         if options.verbose:
-            if len(request) > 300:
-                print(request[:300]+"....")
+            if len(request) > 400:
+                print(request[:400]+"....")
             else:
                 print(request)
             print("")
