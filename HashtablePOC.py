@@ -126,7 +126,7 @@ Content-Length: %s\r\n\
                 print(request[:300]+"....")
             else:
                 print(request)
-            print()
+            print("")
         if options.wait or options.output:
             start = time.clock()
             if url.scheme == "https":
@@ -150,9 +150,9 @@ Content-Length: %s\r\n\
             content = split[2]
             if options.verbose:
                 # only print http header
-                print()
+                print("")
                 print(header)
-                print()
+                print("")
             if options.output:
                 f = open(options.output+str(i)+".html", "w")
                 f.write("<!-- "+header+" -->\r\n"+content)
