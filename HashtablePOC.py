@@ -1,5 +1,7 @@
 '''
 This script was written by Christian Mehlmauer <FireFart@gmail.com>
+https://twitter.com/#!/_FireFart_
+
 Original PHP Payloadgenerator taken from https://github.com/koto/blog-kotowicz-net-examples/tree/master/hashcollision
 CVE : CVE-2011-4885
 
