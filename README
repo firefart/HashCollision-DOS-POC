@@ -11,10 +11,10 @@ requires Python 2.7
 
 Examples:
 -) Make a single Request, wait for the response and save the response to output0.html
-python HashtablePOC.py -u https://host/index.php -v -c 1 -w -o output
+python HashtablePOC.py -u https://host/index.php -v -c 1 -w -o output -t PHP
 
 -) Take down a server(make 500 requests without waiting for a response):
-python HashtablePOC.py -u https://host/index.php -v -c 500
+python HashtablePOC.py -u https://host/index.php -v -c 500 -t PHP
 
 Changelog:
 v3.0: Load Payload from file
