@@ -106,15 +106,15 @@ def main():
             sock.connect((host, port))
             sock.settimeout(None)
 
-        request = """POST %s HTTP/1.1
-Host: %s
-Content-Type: application/x-www-form-urlencoded
-User-Agent: Mozilla/5.0 (Windows; U; Windows NT 6.1; de; rv:1.9.2.20) Gecko/20110803 Firefox/3.6.20 ( .NET CLR 3.5.30729; .NET4.0E)
-Content-Length: %s
-
-%s
-
-""" % (path, host, str(len(payload)), payload)
+        request = "POST %s HTTP/1.1\r\n\
+Host: %s\r\n\
+Content-Type: application/x-www-form-urlencoded\r\n\
+Connection: Close\r\n\
+User-Agent: Mozilla/5.0 (Windows; U; Windows NT 6.1; de; rv:1.9.2.20) Gecko/20110803 Firefox/3.6.20 ( .NET CLR 3.5.30729; .NET4.0E)\r\n\
+Content-Length: %s\r\n\
+\r\n\
+%s\r\n\
+\r\n" % (path, host, str(len(payload)), payload)
 
         if url.scheme == "https":
             ssl_sock.send(request)
@@ -126,7 +126,7 @@ Content-Length: %s
                 print(request[:300]+"....")
             else:
                 print(request)
-            print
+            print()
         if options.wait or options.output:
             start = time.clock()
             if url.scheme == "https":
@@ -143,16 +143,16 @@ Content-Length: %s
                     data = sock.recv(1024)
             
             elapsed = (time.clock() - start)
-            print ("Request %s finished" % str(i+1))
-            print ("Request %s duration: %s" % (str(i+1), elapsed))
+            print("Request %s finished" % str(i+1))
+            print("Request %s duration: %s" % (str(i+1), elapsed))
             split = string.partition("\r\n\r\n")
             header = split[0]
             content = split[2]
             if options.verbose:
                 # only print http header
-                print
+                print()
                 print(header)
-                print
+                print()
             if options.output:
                 f = open(options.output+str(i)+".html", "w")
                 f.write("<!-- "+header+" -->\r\n"+content)
