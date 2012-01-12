@@ -17,6 +17,7 @@ python HashtablePOC.py -u https://host/index.php -v -c 1 -w -o output -t PHP
 python HashtablePOC.py -u https://host/index.php -v -c 500 -t PHP
 
 Changelog:
+v5.0: Define max payload size as parameter
 v4.0: Get PHP Collision Chars on the fly
 v3.0: Load Payload from file
 v2.0: Added Support for https, switched to HTTP 1.1

