@@ -40,12 +40,10 @@ import random
 import itertools
 
 class Payloadgenerator:
-    # Number of colliding chars to find
-    _collisionchars = 5
-    # Length of the collision chars (2 = Ey, FZ; 3=HyA, ...)
-    _collisioncharlength = 2
-    # Length of each parameter in the payload
-    _payloadlength = 8
+    def __init__(self, collisionchars, collisioncharlength, payloadlength):
+        self._collisionchars = collisionchars
+        self._collisioncharlength = collisioncharlength
+        self._payloadlength = payloadlength
     
     def generateASPPayload(self):
         raise Exception("ASP Payload not implemented")
@@ -197,7 +195,13 @@ def main():
     if not options.payload:
         print("Generating Payload...")
         
-        generator = Payloadgenerator()
+        # Number of colliding chars to find
+        collisionchars = 5
+        # Length of the collision chars (2 = Ey, FZ; 3=HyA, ...)
+        collisioncharlength = 2
+        # Length of each parameter in the payload
+        payloadlength = 8
+        generator = Payloadgenerator(collisionchars, collisioncharlength, payloadlength)
         if options.target == "PHP":
             payload = generator.generatePHPPayload()
         elif options.target == "ASP":
