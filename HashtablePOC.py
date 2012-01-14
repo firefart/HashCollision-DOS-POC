@@ -40,7 +40,7 @@ import random
 import itertools
 
 class Payloadgenerator:
-    def __init__(self, collisionchars, collisioncharlength, payloadlength):
+    def __init__(self, collisionchars = 5, collisioncharlength = 2, payloadlength = 8):
         self._collisionchars = collisionchars
         self._collisioncharlength = collisioncharlength
         self._payloadlength = payloadlength
