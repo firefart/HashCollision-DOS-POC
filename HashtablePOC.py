@@ -8,8 +8,13 @@ Sourcecode online at:
 https://github.com/FireFart/HashCollision-DOS-POC
 
 Original PHP Payloadgenerator taken from https://github.com/koto/blog-kotowicz-net-examples/tree/master/hashcollision
-CVE : CVE-2011-4885
+
 http://www.ocert.org/advisories/ocert-2011-003.html
+CVE:
+    Apache Geronimo:    CVE-2011-5034
+    Oracle Glassfish:   CVE-2011-5035
+    PHP:                CVE-2011-4885
+    Apache Tomcat:      CVE-2011-4858
 
 requires Python 2.7
 
