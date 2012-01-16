@@ -188,11 +188,30 @@ def main():
     parser.add_argument("-p", "--payload", dest="payload", help="Save payload to file")
     parser.add_argument("-o", "--output", dest="output", help="Save Server response to file. This name is only a pattern. HTML Extension will be appended. Implies -w")
     parser.add_argument("-t", "--target", dest="target", help="Target of the attack", choices=["ASP", "PHP", "JAVA"], required=True)
-    parser.add_argument("-m", "--max-payload-size", dest="maxpayloadsize", help="Maximum size of the Payload in Megabyte. PHPs defaultconfiguration does not allow more than 8MB, Tomcat is 2MB", default=8, type=int)
+    parser.add_argument("-m", "--max-payload-size", dest="maxpayloadsize", help="Maximum size of the Payload in Megabyte. PHPs defaultconfiguration does not allow more than 8MB, Tomcat is 2MB", type=int)
     parser.add_argument("-g", "--generate", dest="generate", help="Only generate Payload and exit", default=False, action="store_true")
     parser.add_argument("--version", action="version", version="%(prog)s 6.0")
 
     options = parser.parse_args()
+    
+    if options.target == "PHP":
+        if not options.maxpayloadsize or options.maxpayloadsize == 0:
+            maxpayloadsize = 8
+        else:
+            maxpayloadsize = options.maxpayloadsize
+    elif options.target == "ASP":
+        if not options.maxpayloadsize or options.maxpayloadsize == 0:
+            maxpayloadsize = 8
+        else:
+            maxpayloadsize = options.maxpayloadsize
+    elif options.target == "JAVA":
+        if not options.maxpayloadsize or options.maxpayloadsize == 0:
+            maxpayloadsize = 2
+        else:
+            maxpayloadsize = options.maxpayloadsize
+    else:
+        print("Target %s not yet implemented" % options.target)
+        sys.exit(1)
 
     url = urlparse.urlparse(options.url)
 
@@ -244,7 +263,7 @@ def main():
         print("Loaded Payload from %s" % options.payload)    
 
     # trim to maximum payload size (in MB)
-    maxinmb = options.maxpayloadsize*1024*1024
+    maxinmb = maxpayloadsize*1024*1024
     payload = payload[:maxinmb]
     # remove last invalid(cut off) parameter
     position = payload.rfind("=&")
